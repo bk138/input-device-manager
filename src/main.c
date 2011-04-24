@@ -24,7 +24,6 @@
 enum {
     COL_ID = 0, /* device id, int*/
     COL_NAME,   /* device name, string */
-    COL_DEVICE, /* XDevice* */
     COL_USE,    /* use field as of XListInputDevices */
     COL_ICON,   /* icon */
     COL_GENERATION,  /* increased in every query_devices */
@@ -389,12 +388,12 @@ static gboolean signal_button_press(GtkTreeView *treeview,
             gtk_tree_model_get(GTK_TREE_MODEL(model), &iter,
                                COL_ID, &id, COL_USE, &use, -1);
 
-            if (use == IsXPointer || use == IsXKeyboard || use == IsFloating)
+            if (use == XIMasterPointer || use == XIMasterKeyboard || use == XIFloatingSlave)
             {
                 menu = gtk_menu_new();
                 menuitem = gtk_menu_item_new_with_label("Remove");
 
-                if (id < 2 || use == IsFloating) /* VCP or VCK*/
+                if (id < 2 || use == XIFloatingSlave) /* VCP or VCK*/
                     gtk_widget_set_sensitive(menuitem, FALSE);
 
                 g_signal_connect(menuitem, "activate",
@@ -450,12 +449,9 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
     GtkTreeStore *treestore;
     GtkTreeModel *model;
     GtkTreeIter iter, child;
-    XDeviceInfo* info;
-    XAnyClassPtr any;
-    XAttachInfoPtr attach;
+    XIDeviceInfo *devices, *dev;
     int ndevices;
     int i, j;
-    XDevice* dev;
     int icontype;
     GdkPixbuf *icon;
     int valid, child_valid;
@@ -466,7 +462,6 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
         treestore = gtk_tree_store_new(NUM_COLS,
                                        G_TYPE_UINT, /* deviceid*/
                                        G_TYPE_STRING, /* name */
-                                       G_TYPE_POINTER, /* XDevice */
                                        G_TYPE_UINT,
                                        GDK_TYPE_PIXBUF,
                                        G_TYPE_UINT
@@ -479,21 +474,23 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
     }
 
     gds->generation++;
-    info = XListInputDevices(gds->dpy, &ndevices);
+    devices = XIQueryDevice(gds->dpy, XIAllDevices, &ndevices);
 
     /* First, run through all master device and append them to the tree store
      */
     for (i = 0; i < ndevices; i++)
     {
-        if (info[i].use >= IsXExtensionDevice)
+        dev = &devices[i];
+
+        if (dev->use != XIMasterPointer && dev->use != XIMasterKeyboard)
             continue;
 
         valid = gtk_tree_model_get_iter_first(model, &iter);
-        g_debug("MD: %s", info[i].name);
+        g_debug("MD: %s", devices[i].name);
 
         while(valid) {
             gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
-            if (id == info[i].id)
+            if (id == dev->deviceid)
             {
                 gtk_tree_store_set(treestore, &iter,
                                    COL_GENERATION, gds->generation, -1);
@@ -505,17 +502,14 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 
         if (valid != 0xFF) /* new MD */
         {
-            icontype =
-                (info[i].use == IsXPointer) ? ICON_MOUSE : ICON_KEYBOARD;
+            icontype = (dev->use == XIMasterPointer) ? ICON_MOUSE : ICON_KEYBOARD;
             icon = load_icon(icontype);
 
-            dev = XOpenDevice(gds->dpy, info[i].id);
             gtk_tree_store_append(treestore, &iter, NULL);
             gtk_tree_store_set(treestore, &iter,
-                               COL_ID, info[i].id,
-                               COL_NAME, info[i].name,
-                               COL_DEVICE, dev,
-                               COL_USE, info[i].use,
+                               COL_ID, dev->deviceid,
+                               COL_NAME, dev->name,
+                               COL_USE, dev->use,
                                COL_ICON, icon,
                                COL_GENERATION, gds->generation,
                                -1);
@@ -528,7 +522,7 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
     while(valid)
     {
         gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
-        if (id == IsFloating)
+        if (id == XIFloatingSlave)
             break;
 
         valid = gtk_tree_model_iter_next(model, &iter);
@@ -540,10 +534,9 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
         icon = load_icon(ICON_FLOATING);
         gtk_tree_store_append(treestore, &iter, NULL);
         gtk_tree_store_set(treestore, &iter,
-                COL_ID, IsFloating,
+                COL_ID, XIFloatingSlave,
                 COL_NAME, "Floating",
-                COL_DEVICE, NULL,
-                COL_USE, IsFloating,
+                COL_USE, XIFloatingSlave,
                 COL_ICON, icon,
                 COL_GENERATION, gds->generation,
                 -1);
@@ -571,67 +564,57 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
      * respective MD */
     for (i = 0; i < ndevices; i++)
     {
-        if (info[i].use < IsXExtensionDevice)
-            continue;
+        dev = &devices[i];
 
-        any = (XAnyClassPtr)(info[i].inputclassinfo);
+        if (dev->use == XIMasterPointer || dev->use == XIMasterKeyboard)
+   	  continue;
 
-        g_debug("SD: %s", info[i].name);
+        g_debug("SD: %s", dev->name);
 
-        for (j = 0; j < info[i].num_classes;
-             j++, any = (XAnyClassPtr)((char*) any + any->length))
-        {
-            if (any->class != AttachClass)
-                continue;
+	valid = gtk_tree_model_get_iter_first(model, &iter);
+	while(valid) {
+	  gtk_tree_model_get(model, &iter, COL_ID, &masterid, -1);
+	  if(masterid == dev->deviceid)
+	    {
+	      /* found master, check if we're already attached to it in
+	       * the tree model */
+	      child_valid = gtk_tree_model_iter_children(model, &child, &iter);
+	      while (child_valid)
+		{
+		  gtk_tree_model_get(model, &child, COL_ID, &id);
 
-            attach = (XAttachInfoPtr)any;
-            valid = gtk_tree_model_get_iter_first(model, &iter);
-            while(valid) {
-                gtk_tree_model_get(model, &iter, COL_ID, &masterid, -1);
-                if(masterid == attach->attached)
-                {
-                    /* found master, check if we're already attached to it in
-                     * the tree model */
-                    child_valid = gtk_tree_model_iter_children(model, &child, &iter);
-                    while (child_valid)
-                    {
-                        gtk_tree_model_get(model, &child, COL_ID, &id);
+		  if (id == dev->deviceid)
+		    {
+		      gtk_tree_store_set(treestore, &child,
+					 COL_GENERATION, gds->generation, -1);
+		      child_valid = 0xFF;
+		      break;
+		    }
 
-                        if (id == info[i].id)
-                        {
-                            gtk_tree_store_set(treestore, &child,
-                                          COL_GENERATION, gds->generation, -1);
-                            child_valid = 0xFF;
-                            break;
-                        }
+		  child_valid = gtk_tree_model_iter_next(model, &child);
+		}
 
-                        child_valid = gtk_tree_model_iter_next(model, &child);
-                    }
+	      /* new device, attach */
+	      if (child_valid != 0xFF)
+		{
+		  gtk_tree_store_append(treestore, &child, &iter);
+		  gtk_tree_store_set(treestore, &child,
+				     COL_ID, dev->deviceid,
+				     COL_NAME, dev->name,
+				     COL_USE, dev->use,
+				     COL_GENERATION, gds->generation,
+				     -1);
+		}
+	      break;
+	    }
 
-                    /* new device, attach */
-                    if (child_valid != 0xFF)
-                    {
-
-                        dev = XOpenDevice(gds->dpy, info[i].id);
-                        gtk_tree_store_append(treestore, &child, &iter);
-                        gtk_tree_store_set(treestore, &child,
-                                COL_ID, info[i].id,
-                                COL_NAME, info[i].name,
-                                COL_DEVICE, dev,
-                                COL_USE, info[i].use,
-                                COL_GENERATION, gds->generation,
-                                -1);
-                    }
-                    break;
-                }
-
-                valid = gtk_tree_model_iter_next(model, &iter);
-            }
-            break;
-        }
+	  valid = gtk_tree_model_iter_next(model, &iter);
+	}
+	break;
+        
     }
 
-    XFreeDeviceList(info);
+    XIFreeDeviceInfo(devices);
 
     /* clean tree store of anything that doesn't have the current
        server generation */
