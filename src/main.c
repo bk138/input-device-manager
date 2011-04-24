@@ -82,35 +82,32 @@ static Display* dpy_init()
  * Assemble a change attachment struct and return it. Must be freed by the
  * caller. Struct can be used to apply multiple changes at once.
  */
-static XAnyHierarchyChangeInfo* change_attachment(XDevice* dev, XDevice *to)
+static int change_attachment(GDeviceSetup *gds, int id_from, int id_to)
 {
-    XChangeAttachmentInfo* att = malloc(sizeof(XChangeAttachmentInfo));
+    XIAttachSlaveInfo att;
+    int ret;
 
-    if (att)
-    {
-        att->type = CH_ChangeAttachment;
-        att->changeMode = (to) ? AttachToMaster : Floating;
-        att->device = dev;
-        att->newMaster = to;
-    }
-    return (XAnyHierarchyChangeInfo*)att;
+    att.type = XIAttachSlave;
+    att.deviceid = id_from;
+    att.new_master = id_to;
+
+    ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&att, 1);
+    return ret;
 }
 
 /**
  * Remove a master device from the display. All SDs attached to dev will be
- * attached to vcp and vck.
+ * set to floating.
  * Effective immediately.
  */
-static void remove_master(GDeviceSetup *gds, XDevice *dev, XDevice *vcp, XDevice *vck)
+static void remove_master(GDeviceSetup *gds, int id)
 {
-    XRemoveMasterInfo remove;
+    XIRemoveMasterInfo remove;
 
-    remove.type = CH_RemoveMasterDevice;
-    remove.device = dev;
-    remove.returnMode = AttachToMaster;
-    remove.returnPointer = vcp;
-    remove.returnKeyboard = vck;
-    XChangeDeviceHierarchy(gds->dpy, (XAnyHierarchyChangeInfo*)&remove, 1);
+    remove.type = XIRemoveMaster;
+    remove.deviceid = id;
+    remove.return_mode = XIFloating;
+    XChangeDeviceHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&remove, 1);
     XFlush(gds->dpy);
 }
 
@@ -120,14 +117,14 @@ static void remove_master(GDeviceSetup *gds, XDevice *dev, XDevice *vcp, XDevice
  */
 static void create_master(GDeviceSetup *gds, const char* name)
 {
-    XCreateMasterInfo cr;
+    XIAddMasterInfo cr;
 
-    cr.type = CH_CreateMasterDevice;
+    cr.type = XIAddMaster;
     cr.name = (char*)name;
-    cr.sendCore = TRUE;
+    cr.send_core = TRUE;
     cr.enable = TRUE;
 
-    XChangeDeviceHierarchy(gds->dpy, (XAnyHierarchyChangeInfo*)&cr, 1);
+    XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&cr, 1);
     XFlush(gds->dpy);
 }
 
