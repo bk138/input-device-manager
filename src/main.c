@@ -15,7 +15,7 @@
  */
 
 #include <X11/Xlib.h>
-#include <X11/extensions/XInput.h>
+#include <X11/extensions/XInput2.h>
 #include <gtk/gtk.h>
 #include <stdlib.h>
 
@@ -49,11 +49,11 @@ typedef struct {
 static GtkTreeStore* query_devices(GDeviceSetup *gds);
 
 /* Xlib */
-
 static Display* dpy_init()
 {
-    XExtensionVersion *vers;
     Display           *dpy;
+    int opcode, event, error;
+    int major = 2, minor = 0; /* XInput 2.0 */
 
     dpy = XOpenDisplay(NULL);
     if (!dpy)
@@ -62,15 +62,20 @@ static Display* dpy_init()
         return NULL;
     }
 
-    vers = XQueryInputVersion(dpy, XI_2_Major, XI_2_Minor);
-    if (vers->major_version < 2)
-    {
-        g_debug("X server does not support XI 2.");
-        return NULL;
-    }
+    /* XInput Extension available? */
+    if (!XQueryExtension(dpy, "XInputExtension", &opcode, &event, &error))
+      {
+	g_debug("X Input extension not available.\n");
+	return NULL;
+      }
 
+    /* Which version of XI? */
+    if (XIQueryVersion(dpy, &major, &minor) == BadRequest)
+      {
+	g_debug("XI2 not available. Server supports %d.%d\n", major, minor);
+	return NULL;
+      }
 
-    XFree(vers);
     return dpy;
 }
 
