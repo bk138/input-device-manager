@@ -107,7 +107,7 @@ static void remove_master(GDeviceSetup *gds, int id)
     remove.type = XIRemoveMaster;
     remove.deviceid = id;
     remove.return_mode = XIFloating;
-    XChangeDeviceHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&remove, 1);
+    XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&remove, 1);
     XFlush(gds->dpy);
 }
 
@@ -328,28 +328,21 @@ static void signal_new_md(GtkWidget *widget,
  */
 static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 {
-  /*GDeviceSetup *gds = (GDeviceSetup*)data;
+    GDeviceSetup *gds = (GDeviceSetup*)data;
     GtkTreeView *treeview = GTK_TREE_VIEW(gds->treeview);
     GtkTreeModel *model = gtk_tree_view_get_model(treeview);
     GtkTreeSelection *selection;
     GtkTreeIter iter;
-
-    XDevice *devs[3] = {NULL, NULL, NULL};
+    int id;
 
     selection = gtk_tree_view_get_selection(treeview);
     gtk_tree_selection_get_selected(selection, NULL, &iter);
 
-    gtk_tree_model_get(model, &iter, COL_DEVICE, &devs[0], -1);
+    gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
 
-    // get VCP and VCK, always first and second dev in list 
-    gtk_tree_model_get_iter_first(model, &iter);
-    gtk_tree_model_get(model, &iter, COL_DEVICE, &devs[1], -1);
-    gtk_tree_model_iter_next(model, &iter);
-    gtk_tree_model_get(model, &iter, COL_DEVICE, &devs[2], -1);
+    remove_master(gds, id);
 
-    remove_master(gds, devs[0], devs[1], devs[2]);
-
-    query_devices(gds);*/
+    query_devices(gds);
     return TRUE;
 }
 
