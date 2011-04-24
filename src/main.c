@@ -82,13 +82,13 @@ static Display* dpy_init()
  * Assemble a change attachment struct and return it. Must be freed by the
  * caller. Struct can be used to apply multiple changes at once.
  */
-static int change_attachment(GDeviceSetup *gds, int id_from, int id_to)
+static int change_attachment(GDeviceSetup *gds, int id, int id_to)
 {
     XIAttachSlaveInfo att;
     int ret;
 
     att.type = XIAttachSlave;
-    att.deviceid = id_from;
+    att.deviceid = id;
     att.new_master = id_to;
 
     ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&att, 1);
@@ -155,7 +155,6 @@ static void signal_dnd_recv(GtkTreeView *tv,
     GtkTreeViewDropPosition pos;
     gchar *name, *md_name;
     int id, md_id;
-    XDevice *dev, *md_dev;
     int use, md_use;
 
     gds = (GDeviceSetup*)data;
@@ -167,12 +166,11 @@ static void signal_dnd_recv(GtkTreeView *tv,
     gtk_tree_model_get(model, &sel_iter,
                        COL_NAME, &name,
                        COL_ID, &id,
-                       COL_DEVICE, &dev,
                        COL_USE, &use,
                        -1);
 
     /* MD selected? */
-    if (use == IsXPointer || use == IsXKeyboard)
+    if (use == XIMasterPointer || use == XIMasterKeyboard)
         return;
 
     if (!gtk_tree_view_get_dest_row_at_pos(tv, x, y, &path, &pos))
@@ -194,13 +192,13 @@ static void signal_dnd_recv(GtkTreeView *tv,
 
     gtk_tree_model_get(GTK_TREE_MODEL(model), final_parent,
                        COL_NAME, &md_name, COL_ID, &md_id,
-                       COL_DEVICE, &md_dev, COL_USE, &md_use, -1);
+		       COL_USE, &md_use, -1);
 
-    if (md_use != IsFloating)
+    if (md_use != XIFloatingSlave)
     {
-        if (use == IsXExtensionPointer && md_use != IsXPointer)
+        if (use == XISlavePointer && md_use != XIMasterPointer)
             return;
-        if (use == IsXExtensionKeyboard && md_use != IsXKeyboard)
+        if (use == XISlaveKeyboard && md_use != XIMasterKeyboard)
             return;
     }
 
@@ -219,13 +217,13 @@ static void signal_dnd_recv(GtkTreeView *tv,
     }
     /* add to new row, remove from old row */
     gtk_tree_store_set(GTK_TREE_STORE(model), &ins_iter,
-            COL_ID, id, COL_NAME, name, COL_DEVICE, dev, COL_USE, use, -1);
+            COL_ID, id, COL_NAME, name, COL_USE, use, -1);
     gtk_tree_store_remove(GTK_TREE_STORE(model), &sel_iter);
     g_free(name);
     g_free(md_name);
 
     /* add to changes list */
-    gds->changes = g_list_append(gds->changes, change_attachment(dev, md_dev));
+    gds->changes = g_list_append(gds->changes, change_attachment(gds, id, md_id));
     toggle_cancelapply_buttons(gds, TRUE);
 }
 
@@ -236,7 +234,7 @@ static void signal_dnd_recv(GtkTreeView *tv,
 static void apply(GDeviceSetup *gds)
 {
     int num_changes = 0;
-    XAnyHierarchyChangeInfo *all_changes;
+    XIAnyHierarchyChangeInfo *all_changes;
     GList *it;
     int i;
 
@@ -252,7 +250,7 @@ static void apply(GDeviceSetup *gds)
         return;
 
     /* push everything from list into array, free list, then apply to dpy */
-    all_changes = malloc(num_changes * sizeof(XAnyHierarchyChangeInfo));
+    all_changes = malloc(num_changes * sizeof(XIAnyHierarchyChangeInfo));
     if (!all_changes)
     {
         g_debug("No memory.");
@@ -263,11 +261,11 @@ static void apply(GDeviceSetup *gds)
          i < num_changes && it;
          i++, it = g_list_next(it))
     {
-        all_changes[i] = *((XAnyHierarchyChangeInfo*)it->data);
+        all_changes[i] = *((XIAnyHierarchyChangeInfo*)it->data);
         free(it->data);
     }
 
-    XChangeDeviceHierarchy(gds->dpy, all_changes, num_changes);
+    XIChangeHierarchy(gds->dpy, all_changes, num_changes);
     XFlush(gds->dpy);
 
     g_list_free(gds->changes);
@@ -330,7 +328,7 @@ static void signal_new_md(GtkWidget *widget,
  */
 static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 {
-    GDeviceSetup *gds = (GDeviceSetup*)data;
+  /*GDeviceSetup *gds = (GDeviceSetup*)data;
     GtkTreeView *treeview = GTK_TREE_VIEW(gds->treeview);
     GtkTreeModel *model = gtk_tree_view_get_model(treeview);
     GtkTreeSelection *selection;
@@ -343,7 +341,7 @@ static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 
     gtk_tree_model_get(model, &iter, COL_DEVICE, &devs[0], -1);
 
-    /* get VCP and VCK, always first and second dev in list */
+    // get VCP and VCK, always first and second dev in list 
     gtk_tree_model_get_iter_first(model, &iter);
     gtk_tree_model_get(model, &iter, COL_DEVICE, &devs[1], -1);
     gtk_tree_model_iter_next(model, &iter);
@@ -351,7 +349,7 @@ static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 
     remove_master(gds, devs[0], devs[1], devs[2]);
 
-    query_devices(gds);
+    query_devices(gds);*/
     return TRUE;
 }
 
