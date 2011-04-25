@@ -670,7 +670,7 @@ static GtkTreeView* get_tree_view(GDeviceSetup *gds)
 
     tv = (GtkTreeView*)gtk_tree_view_new();
     col = gtk_tree_view_column_new();
-    gtk_tree_view_column_set_title(col, "Name");
+    gtk_tree_view_column_set_title(col, ("Input Device Hierarchy"));
     gtk_tree_view_append_column(tv, col);
 
     renderer = gtk_cell_renderer_pixbuf_new();
