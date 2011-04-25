@@ -474,7 +474,7 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
             continue;
 
         valid = gtk_tree_model_get_iter_first(model, &iter);
-        g_debug("MD: %s", devices[i].name);
+        g_debug("MD %d: %s", dev->deviceid,  dev->name);
 
         while(valid) {
             gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
@@ -557,12 +557,12 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
         if (dev->use == XIMasterPointer || dev->use == XIMasterKeyboard)
    	  continue;
 
-        g_debug("SD: %s", dev->name);
+        g_debug("SD %d: %s", dev->deviceid, dev->name);
 
 	valid = gtk_tree_model_get_iter_first(model, &iter);
 	while(valid) {
 	  gtk_tree_model_get(model, &iter, COL_ID, &masterid, -1);
-	  if(masterid == dev->deviceid)
+	  if(masterid == dev->attachment)
 	    {
 	      /* found master, check if we're already attached to it in
 	       * the tree model */
@@ -598,8 +598,6 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 
 	  valid = gtk_tree_model_iter_next(model, &iter);
 	}
-	break;
-        
     }
 
     XIFreeDeviceInfo(devices);
