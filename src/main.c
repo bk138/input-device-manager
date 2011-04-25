@@ -36,6 +36,8 @@ enum {
     ICON_FLOATING
 };
 
+#define ID_FLOATING -1
+
 typedef struct {
     Display     *dpy;       /* Display connection (in addition to GTK) */
     GList       *changes;   /* changes to be applied when "apply" is hit */
@@ -508,12 +510,12 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
         }
     }
 
-    /* search for Floating fake device */
+    /* search for Floating fake master device */
     valid = gtk_tree_model_get_iter_first(model, &iter);
     while(valid)
     {
         gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
-        if (id == XIFloatingSlave)
+        if (id == ID_FLOATING)
             break;
 
         valid = gtk_tree_model_iter_next(model, &iter);
@@ -521,13 +523,13 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 
     if (!valid)
     {
-        /* Attach a fake device for "Floating" */
+        /* Attach a fake master device for "Floating" */
         icon = load_icon(ICON_FLOATING);
         gtk_tree_store_append(treestore, &iter, NULL);
         gtk_tree_store_set(treestore, &iter,
-                COL_ID, XIFloatingSlave,
+                COL_ID, ID_FLOATING,
                 COL_NAME, "Floating",
-                COL_USE, XIFloatingSlave,
+                COL_USE, ID_FLOATING,
                 COL_ICON, icon,
                 COL_GENERATION, gds->generation,
                 -1);
@@ -565,7 +567,7 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 	valid = gtk_tree_model_get_iter_first(model, &iter);
 	while(valid) {
 	  gtk_tree_model_get(model, &iter, COL_ID, &masterid, -1);
-	  if(masterid == dev->attachment)
+	  if(dev->attachment == masterid || (dev->use == XIFloatingSlave && masterid == ID_FLOATING))
 	    {
 	      /* found master, check if we're already attached to it in
 	       * the tree model */
@@ -585,7 +587,7 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 		  child_valid = gtk_tree_model_iter_next(model, &child);
 		}
 
-	      /* new device, attach */
+	      /* new slave device, attach */
 	      if (child_valid != 0xFF)
 		{
 		  gtk_tree_store_append(treestore, &child, &iter);
