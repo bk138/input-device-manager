@@ -176,10 +176,8 @@ static gboolean create_master(GDeviceSetup *gds, const char* name)
     return True;
 }
 
-static void toggle_cancelapply_buttons(GDeviceSetup* gds, int enable)
+static void toggle_undo_button(GDeviceSetup* gds, int enable)
 {
-    gtk_dialog_set_response_sensitive(GTK_DIALOG(gds->window),
-                                      GTK_RESPONSE_APPLY, enable);
     gtk_dialog_set_response_sensitive(GTK_DIALOG(gds->window),
                                       GTK_RESPONSE_CANCEL, enable);
 }
@@ -203,6 +201,7 @@ static void signal_dnd_recv(GtkTreeView *tv,
     GtkTreeViewDropPosition pos;
     int id, md_id;
     int use, md_use;
+    gboolean status = False;
 
     gds = (GDeviceSetup*)data;
     model = gtk_tree_view_get_model(tv);
@@ -243,12 +242,15 @@ static void signal_dnd_recv(GtkTreeView *tv,
     
     /* try */
     if(md_id == ID_FLOATING)
-      float_device(gds, id);
+      status = float_device(gds, id);
     else
-      change_attachment(gds, id, md_id);
+      status = change_attachment(gds, id, md_id);
 
-    /* update display */
-    query_devices(gds); 
+    if(status)
+      {
+	query_devices(gds);
+	toggle_undo_button(gds, TRUE); 
+      }
 }
 
 /**
@@ -734,11 +736,10 @@ int main (int argc, char *argv[])
 
     gtk_dialog_add_buttons(GTK_DIALOG(window),
                            GTK_STOCK_HELP, GTK_RESPONSE_HELP,
-                           //GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
-                           //GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                           GTK_STOCK_UNDO, GTK_RESPONSE_CANCEL,
                            GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE,
                            NULL);
-    //toggle_cancelapply_buttons(&gds, FALSE);
+    toggle_undo_button(&gds, FALSE);
 
     /* main dialog area */
     gds.treeview = get_tree_view(&gds);
@@ -769,10 +770,12 @@ int main (int argc, char *argv[])
             case GTK_RESPONSE_HELP:
                 break;
             case GTK_RESPONSE_CANCEL:
-                query_devices(&gds);
+	      g_printerr("undo !\n");
+	      /*query_devices(&gds);
                 g_list_free(gds.changes);
                 gds.changes = NULL;
-                toggle_cancelapply_buttons(&gds, FALSE);
+                */
+	        toggle_undo_button(&gds, FALSE);
                 break;
             case GTK_RESPONSE_CLOSE:
                 if (gds.changes)
@@ -789,10 +792,6 @@ int main (int argc, char *argv[])
                     loop = (response == GTK_RESPONSE_NO);
                 } else
                     loop = FALSE;
-                break;
-            case GTK_RESPONSE_APPLY:
-                apply(&gds);
-                toggle_cancelapply_buttons(&gds, FALSE);
                 break;
             case GTK_RESPONSE_DELETE_EVENT:
                 loop = FALSE;
