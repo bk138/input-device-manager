@@ -129,7 +129,7 @@ static gboolean float_device(GDeviceSetup *gds, int id)
 
 /**
  * Remove a master device from the display. All SDs attached to dev will be
- * set to floating.
+ * attached to VCP and VCK.
  * Effective immediately.
  */
 static gboolean remove_master(GDeviceSetup *gds, int id)
@@ -138,7 +138,9 @@ static gboolean remove_master(GDeviceSetup *gds, int id)
 
     remove.type = XIRemoveMaster;
     remove.deviceid = id;
-    remove.return_mode = XIFloating;
+    remove.return_mode = XIAttachToMaster;
+    remove.return_pointer = 2; /* VCP */
+    remove.return_keyboard = 3; /* VCK */
 
     gdk_error_trap_push ();
     XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&remove, 1);
@@ -399,15 +401,13 @@ static gboolean signal_button_press(GtkTreeView *treeview,
             gtk_tree_model_get(GTK_TREE_MODEL(model), &iter,
                                COL_ID, &id, COL_NAME, &name, COL_USE, &use, -1);
 
-            if (use == XIMasterPointer || use == XIMasterKeyboard || use == XIFloatingSlave)
+            if (use == XIMasterPointer || use == XIMasterKeyboard)
             {
                 menu = gtk_menu_new();
                 menuitem = gtk_menu_item_new_with_label("Remove");
 
-                if (strcmp(name, "Virtual core pointer") == 0
-		    || strcmp(name, "Virtual core keyboard") == 0
-		    || use == XIFloatingSlave)
-                    gtk_widget_set_sensitive(menuitem, FALSE);
+                if (id == 2 || id == 3) /* VCP or VCK */
+		  gtk_widget_set_sensitive(menuitem, FALSE);
 
                 g_signal_connect(menuitem, "activate",
                                  G_CALLBACK(signal_popup_activate), gds);
