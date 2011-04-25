@@ -81,8 +81,7 @@ static Display* dpy_init()
 }
 
 /**
- * Assemble a change attachment struct and return it. Must be freed by the
- * caller. Struct can be used to apply multiple changes at once.
+ * Try to reattach id to id_to.
  */
 static int change_attachment(GDeviceSetup *gds, int id, int id_to)
 {
@@ -96,6 +95,24 @@ static int change_attachment(GDeviceSetup *gds, int id, int id_to)
     ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&att, 1);
     return ret;
 }
+
+
+/**
+ * Set a device floating.
+ */
+int
+float_device(GDeviceSetup *gds, int id)
+{
+    XIDetachSlaveInfo c;
+    int ret;
+
+    c.type = XIDetachSlave;
+    c.deviceid = id;
+    
+    ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&c, 1);
+    return ret;
+}
+
 
 /**
  * Remove a master device from the display. All SDs attached to dev will be
@@ -155,7 +172,6 @@ static void signal_dnd_recv(GtkTreeView *tv,
                 *final_parent, *final_sib;
     GtkTreePath *path;
     GtkTreeViewDropPosition pos;
-    gchar *name, *md_name;
     int id, md_id;
     int use, md_use;
 
@@ -166,7 +182,6 @@ static void signal_dnd_recv(GtkTreeView *tv,
         return;
 
     gtk_tree_model_get(model, &sel_iter,
-                       COL_NAME, &name,
                        COL_ID, &id,
                        COL_USE, &use,
                        -1);
@@ -193,40 +208,18 @@ static void signal_dnd_recv(GtkTreeView *tv,
     }
 
     gtk_tree_model_get(GTK_TREE_MODEL(model), final_parent,
-                       COL_NAME, &md_name, COL_ID, &md_id,
-		       COL_USE, &md_use, -1);
+		       COL_ID, &md_id, COL_USE, &md_use, -1);
 
-    if (md_use != XIFloatingSlave)
-    {
-        if (use == XISlavePointer && md_use != XIMasterPointer)
-            return;
-        if (use == XISlaveKeyboard && md_use != XIMasterKeyboard)
-            return;
-    }
+    g_debug("Trying to attach %d to %d\n", id, md_id);
+    
+    /* try */
+    if(md_id == ID_FLOATING)
+      float_device(gds, id);
+    else
+      change_attachment(gds, id, md_id);
 
-    switch(pos)
-    {
-        case GTK_TREE_VIEW_DROP_BEFORE:
-        case GTK_TREE_VIEW_DROP_INTO_OR_BEFORE:
-            gtk_tree_store_insert_before(GTK_TREE_STORE(model),
-                                         &ins_iter, final_parent, final_sib);
-            break;
-        case GTK_TREE_VIEW_DROP_AFTER:
-        case GTK_TREE_VIEW_DROP_INTO_OR_AFTER:
-            gtk_tree_store_insert_after(GTK_TREE_STORE(model),
-                                         &ins_iter, final_parent, final_sib);
-            break;
-    }
-    /* add to new row, remove from old row */
-    gtk_tree_store_set(GTK_TREE_STORE(model), &ins_iter,
-            COL_ID, id, COL_NAME, name, COL_USE, use, -1);
-    gtk_tree_store_remove(GTK_TREE_STORE(model), &sel_iter);
-    g_free(name);
-    g_free(md_name);
-
-    /* add to changes list */
-    gds->changes = g_list_append(gds->changes, change_attachment(gds, id, md_id));
-    toggle_cancelapply_buttons(gds, TRUE);
+    /* update display */
+    query_devices(gds); 
 }
 
 /**
@@ -711,11 +704,11 @@ int main (int argc, char *argv[])
 
     gtk_dialog_add_buttons(GTK_DIALOG(window),
                            GTK_STOCK_HELP, GTK_RESPONSE_HELP,
-                           GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
-                           GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                           //GTK_STOCK_APPLY, GTK_RESPONSE_APPLY,
+                           //GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
                            GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE,
                            NULL);
-    toggle_cancelapply_buttons(&gds, FALSE);
+    //toggle_cancelapply_buttons(&gds, FALSE);
 
     /* main dialog area */
     gds.treeview = get_tree_view(&gds);
