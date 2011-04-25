@@ -83,34 +83,47 @@ static Display* dpy_init()
 /**
  * Try to reattach id to id_to.
  */
-static int change_attachment(GDeviceSetup *gds, int id, int id_to)
+static gboolean change_attachment(GDeviceSetup *gds, int id, int id_to)
 {
     XIAttachSlaveInfo att;
-    int ret;
 
     att.type = XIAttachSlave;
     att.deviceid = id;
     att.new_master = id_to;
 
-    ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&att, 1);
-    return ret;
+    gdk_error_trap_push ();
+    XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&att, 1);
+    XSync(gds->dpy, False);
+    if(gdk_error_trap_pop())
+      {
+	g_printerr("ERROR: Attaching device %d to %d failed!\n", id, id_to); 
+	return False;
+      }
+
+    return True;
 }
 
 
 /**
  * Set a device floating.
  */
-int
-float_device(GDeviceSetup *gds, int id)
+static gboolean float_device(GDeviceSetup *gds, int id)
 {
     XIDetachSlaveInfo c;
-    int ret;
 
     c.type = XIDetachSlave;
     c.deviceid = id;
     
-    ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&c, 1);
-    return ret;
+    gdk_error_trap_push ();
+    int ret = XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&c, 1);
+    XSync(gds->dpy, False);
+    if(gdk_error_trap_pop())
+      {      
+	g_printerr("ERROR: Floating device %d failed!\n", id); 
+	return False;
+      }
+
+    return True;
 }
 
 
@@ -119,22 +132,28 @@ float_device(GDeviceSetup *gds, int id)
  * set to floating.
  * Effective immediately.
  */
-static void remove_master(GDeviceSetup *gds, int id)
+static gboolean remove_master(GDeviceSetup *gds, int id)
 {
     XIRemoveMasterInfo remove;
 
     remove.type = XIRemoveMaster;
     remove.deviceid = id;
     remove.return_mode = XIFloating;
+
+    gdk_error_trap_push ();
     XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&remove, 1);
-    XFlush(gds->dpy);
+    XSync(gds->dpy, False);
+    if(gdk_error_trap_pop())
+      return False;
+
+    return True;
 }
 
 /**
  * Create a master device with the given name on the display. Applied
  * immediately.
  */
-static void create_master(GDeviceSetup *gds, const char* name)
+static gboolean create_master(GDeviceSetup *gds, const char* name)
 {
     XIAddMasterInfo cr;
 
@@ -143,8 +162,16 @@ static void create_master(GDeviceSetup *gds, const char* name)
     cr.send_core = TRUE;
     cr.enable = TRUE;
 
+    gdk_error_trap_push ();
     XIChangeHierarchy(gds->dpy, (XIAnyHierarchyChangeInfo*)&cr, 1);
-    XFlush(gds->dpy);
+    XSync(gds->dpy, False);
+    if(gdk_error_trap_pop())
+      {
+	g_printerr("ERROR: Creating MD failed!\n");
+	return False;
+      }
+
+    return True;
 }
 
 static void toggle_cancelapply_buttons(GDeviceSetup* gds, int enable)
