@@ -313,16 +313,16 @@ static void signal_new_md(GtkWidget *widget,
     gds = (GDeviceSetup*)data;
 
     popup = (GtkDialog*)gtk_dialog_new();
-    gtk_container_set_border_width(GTK_CONTAINER(popup), 10);
+    gtk_container_set_border_width(GTK_CONTAINER(popup), 3);
     gtk_window_set_modal(GTK_WINDOW(popup), TRUE);
     entry = gtk_entry_new_with_max_length(50);
 
     label = gtk_label_new("Device Name:");
     hbox = gtk_hbox_new(FALSE, 0);
 
-    gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, FALSE, 10);
+    gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, FALSE, 3);
     gtk_box_pack_end(GTK_BOX(hbox), entry, TRUE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(popup->vbox), hbox, TRUE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(popup->vbox), hbox, TRUE, FALSE, 3);
 
     gtk_dialog_add_button(popup, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
     gtk_dialog_add_button(popup, GTK_STOCK_OK, GTK_RESPONSE_OK);
