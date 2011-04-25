@@ -360,6 +360,7 @@ static gboolean signal_button_press(GtkTreeView *treeview,
     GtkTreeSelection *selection;
     GtkTreeIter iter;
     GtkTreeModel *model;
+    gchar *name;
     int use, id;
 
     gds = (GDeviceSetup*)data;
@@ -374,14 +375,16 @@ static gboolean signal_button_press(GtkTreeView *treeview,
 
             gtk_tree_model_get_iter(GTK_TREE_MODEL(model), &iter, path);
             gtk_tree_model_get(GTK_TREE_MODEL(model), &iter,
-                               COL_ID, &id, COL_USE, &use, -1);
+                               COL_ID, &id, COL_NAME, &name, COL_USE, &use, -1);
 
             if (use == XIMasterPointer || use == XIMasterKeyboard || use == XIFloatingSlave)
             {
                 menu = gtk_menu_new();
                 menuitem = gtk_menu_item_new_with_label("Remove");
 
-                if (id < 2 || use == XIFloatingSlave) /* VCP or VCK*/
+                if (strcmp(name, "Virtual core pointer") == 0
+		    || strcmp(name, "Virtual core keyboard") == 0
+		    || use == XIFloatingSlave)
                     gtk_widget_set_sensitive(menuitem, FALSE);
 
                 g_signal_connect(menuitem, "activate",
