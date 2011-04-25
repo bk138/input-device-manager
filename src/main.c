@@ -709,6 +709,7 @@ int main (int argc, char *argv[])
 {
     GDeviceSetup gds = { NULL, NULL, NULL, NULL, 0};
     GtkWidget *window;
+    GtkWidget *scrollwin;
     GtkWidget *bt_new;
     GtkWidget *icon;
     GtkWidget *message;
@@ -726,6 +727,8 @@ int main (int argc, char *argv[])
 
     /* init dialog window */
     window = gtk_dialog_new();
+    gtk_window_set_default_size (GTK_WINDOW(window), 10, 500);
+
     gds.window = window;
     gtk_container_set_border_width(GTK_CONTAINER(window), 10);
 
@@ -739,13 +742,19 @@ int main (int argc, char *argv[])
 
     /* main dialog area */
     gds.treeview = get_tree_view(&gds);
+    scrollwin = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollwin),
+				   GTK_POLICY_NEVER,
+				   GTK_POLICY_AUTOMATIC);
+    gtk_container_add(GTK_CONTAINER(scrollwin), GTK_WIDGET(gds.treeview));
+
 
     bt_new = gtk_button_new_with_mnemonic("_Create Cursor/Keyboard Focus");
     icon   = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_BUTTON);
     gtk_button_set_image(GTK_BUTTON(bt_new), icon);
 
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(window)->vbox),
-                       GTK_WIDGET(gds.treeview), TRUE, TRUE, 0);
+                       GTK_WIDGET(scrollwin), TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(GTK_DIALOG(window)->vbox), bt_new, 0, 0, 10);
     g_signal_connect(G_OBJECT(bt_new), "clicked",
                      G_CALLBACK(signal_new_md), &gds);
