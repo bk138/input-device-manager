@@ -319,14 +319,14 @@ static void signal_new_md(GtkWidget *widget,
     popup = (GtkDialog*)gtk_dialog_new();
     gtk_container_set_border_width(GTK_CONTAINER(popup), 3);
     gtk_window_set_modal(GTK_WINDOW(popup), TRUE);
-    entry = gtk_entry_new_with_max_length(50);
+    entry = gtk_entry_new();
 
     label = gtk_label_new("Device Name:");
     hbox = gtk_hbox_new(FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, FALSE, 3);
     gtk_box_pack_end(GTK_BOX(hbox), entry, TRUE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(popup->vbox), hbox, TRUE, FALSE, 3);
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(popup)), hbox, TRUE, FALSE, 3);
 
     gtk_dialog_add_button(popup, GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL);
     gtk_dialog_add_button(popup, GTK_STOCK_OK, GTK_RESPONSE_OK);
@@ -754,9 +754,9 @@ int main (int argc, char *argv[])
     icon   = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_BUTTON);
     gtk_button_set_image(GTK_BUTTON(bt_new), icon);
 
-    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(window)->vbox),
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(window))),
                        GTK_WIDGET(scrollwin), TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(GTK_DIALOG(window)->vbox), bt_new, 0, 0, 10);
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(window))), bt_new, 0, 0, 10);
     g_signal_connect(G_OBJECT(bt_new), "clicked",
                      G_CALLBACK(signal_new_md), &gds);
 
