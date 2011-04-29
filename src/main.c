@@ -40,10 +40,12 @@ enum {
 
 typedef struct {
     Display     *dpy;       /* Display connection (in addition to GTK) */
+    GdkDisplay *display;
     GList       *changes;   /* changes to be applied when "apply" is hit */
     GtkTreeView *treeview;  /* the main view */
     GtkWidget   *window;
     gint         generation;
+  
 } GDeviceSetup;
 
 /* Forward declarations */
@@ -182,6 +184,18 @@ static void toggle_undo_button(GDeviceSetup* gds, int enable)
                                       GTK_RESPONSE_CANCEL, enable);
 }
 
+
+void on_device_change (GdkDeviceManager *device_manager,
+			GdkDevice        *device,
+			gpointer          user_data)
+{
+  GDeviceSetup* gds = (GDeviceSetup*)user_data;
+  g_debug("Device change detected!\n");
+  query_devices(gds);
+}
+
+
+
 /**
  * Drag-and-drop received.
  */
@@ -247,10 +261,7 @@ static void signal_dnd_recv(GtkTreeView *tv,
       status = change_attachment(gds, id, md_id);
 
     if(status)
-      {
-	query_devices(gds);
-	toggle_undo_button(gds, TRUE); 
-      }
+      toggle_undo_button(gds, TRUE); 
 }
 
 /**
@@ -340,8 +351,6 @@ static void signal_new_md(GtkWidget *widget,
     {
         name = gtk_entry_get_text(GTK_ENTRY(entry));
         create_master(gds, name);
-
-        query_devices(gds); /* update view */
     }
 
     gtk_widget_hide(GTK_WIDGET(popup));
@@ -368,7 +377,6 @@ static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 
     remove_master(gds, id);
 
-    query_devices(gds);
     return TRUE;
 }
 
@@ -727,6 +735,8 @@ int main (int argc, char *argv[])
     }
     gtk_init(&argc, &argv);
 
+    gds.display = gdk_display_get_default();
+
     /* init dialog window */
     window = gtk_dialog_new();
     gtk_window_set_default_size (GTK_WINDOW(window), 10, 500);
@@ -759,6 +769,12 @@ int main (int argc, char *argv[])
     gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(window))), bt_new, 0, 0, 10);
     g_signal_connect(G_OBJECT(bt_new), "clicked",
                      G_CALLBACK(signal_new_md), &gds);
+    g_signal_connect (gdk_display_get_device_manager (gds.display), "device-added",
+		      G_CALLBACK (on_device_change), &gds);
+    g_signal_connect (gdk_display_get_device_manager (gds.display), "device-removed",
+		      G_CALLBACK (on_device_change), &gds);
+    g_signal_connect (gdk_display_get_device_manager (gds.display), "device-changed",
+		      G_CALLBACK (on_device_change), &gds);
 
 
     gtk_widget_show_all(window);
