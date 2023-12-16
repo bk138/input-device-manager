@@ -604,7 +604,7 @@ static GtkTreeStore* query_devices(GDeviceSetup* gds)
 	      child_valid = gtk_tree_model_iter_children(model, &child, &iter);
 	      while (child_valid)
 		{
-		  gtk_tree_model_get(model, &child, COL_ID, &id);
+                  gtk_tree_model_get(model, &child, COL_ID, &id, -1);
 
 		  if (id == dev->deviceid)
 		    {
