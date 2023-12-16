@@ -726,6 +726,11 @@ int main (int argc, char *argv[])
     int response;
     int loop = TRUE;
 
+    /*
+      We run okay under XWayland, but not native Wayland
+    */
+    gdk_set_allowed_backends("x11");
+
     gds.dpy = dpy_init();
     if (!gds.dpy)
     {
