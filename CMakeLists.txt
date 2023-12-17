@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
-project(gnome-device-manager LANGUAGES C)
+project(input-device-manager LANGUAGES C)
 
-set(target_name gnome-device-manager)
+set(target_name input-device-manager)
 set(version 0.3.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
