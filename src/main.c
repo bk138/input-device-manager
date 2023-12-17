@@ -45,8 +45,13 @@ typedef struct {
     GtkTreeView *treeview;  /* the main view */
     GtkWidget   *window;
     gint         generation;
-  
+
 } GDeviceSetup;
+
+typedef struct {
+    GDeviceSetup *gds;
+    int device_id;
+} RemoveMasterWrapperData;
 
 /* Forward declarations */
 static GtkTreeStore* query_devices(GDeviceSetup *gds);
@@ -358,6 +363,18 @@ static void signal_new_md(GtkWidget *widget,
 
 }
 
+// Your function to be executed on the main thread
+gboolean remove_master_wrapper(gpointer data) {
+    RemoveMasterWrapperData *rmd = (RemoveMasterWrapperData*)data;
+
+    remove_master(rmd->gds, rmd->device_id);
+
+    free(rmd);
+
+    // Return FALSE to indicate that the function should not be called again
+    return FALSE;
+}
+
 /**
  * Popup menu item has been clicked. This requires removing a master device.
  */
@@ -375,7 +392,10 @@ static gboolean signal_popup_activate(GtkWidget *menuitem, gpointer data)
 
     gtk_tree_model_get(model, &iter, COL_ID, &id, -1);
 
-    remove_master(gds, id);
+    RemoveMasterWrapperData *rmd = malloc(sizeof(RemoveMasterWrapperData));
+    rmd->gds = gds;
+    rmd->device_id = id;
+    g_idle_add(remove_master_wrapper, rmd);
 
     return TRUE;
 }
