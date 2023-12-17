@@ -710,6 +710,7 @@ int main (int argc, char *argv[])
 
     /* init dialog window */
     window = gtk_dialog_new();
+    gtk_window_set_title(GTK_WINDOW(window), "Input Device Manager");
     gtk_window_set_default_size (GTK_WINDOW(window), 10, 500);
 
     gds.window = window;
