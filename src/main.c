@@ -194,6 +194,30 @@ void on_device_change (GdkDeviceManager *device_manager,
 }
 
 
+void on_help_button()
+{
+    // Create a help dialog
+    GtkWidget *dialog = gtk_message_dialog_new_with_markup(NULL,
+                                                           GTK_DIALOG_MODAL,
+                                                           GTK_MESSAGE_INFO,
+                                                           GTK_BUTTONS_OK,
+                                                           "The window shows your current input device hierarchy.\n\n"
+                                                           "You can create new <b>logical</b> cursor/keyboard focus pairs with\n"
+                                                           "the 'Create' button (and remove them again with a right click).\n\n"
+                                                           "Once you have several logical cursor/keyboard focus pairs, you can\n"
+                                                           "move your <b>physical</b> input devices between them via drag and drop.");
+
+    // Set the title of the dialog
+    gtk_window_set_title(GTK_WINDOW(dialog), "Help");
+
+
+    // Run the dialog and wait for a response
+    gtk_dialog_run(GTK_DIALOG(dialog));
+
+    // Destroy the dialog when done
+    gtk_widget_destroy(dialog);
+}
+
 
 /**
  * Drag-and-drop received.
@@ -754,6 +778,7 @@ int main (int argc, char *argv[])
         switch(response)
         {
             case GTK_RESPONSE_HELP:
+                on_help_button();
                 break;
             case GTK_RESPONSE_CLOSE:
                 loop = FALSE;
