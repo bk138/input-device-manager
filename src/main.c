@@ -182,11 +182,6 @@ static gboolean create_master(GDeviceSetup *gds, const char* name)
     return True;
 }
 
-static void toggle_undo_button(GDeviceSetup* gds, int enable)
-{
-    gtk_dialog_set_response_sensitive(GTK_DIALOG(gds->window),
-                                      GTK_RESPONSE_CANCEL, enable);
-}
 
 
 void on_device_change (GdkDeviceManager *device_manager,
@@ -219,7 +214,6 @@ static void signal_dnd_recv(GtkTreeView *tv,
     GtkTreeViewDropPosition pos;
     int id, md_id;
     int use, md_use;
-    gboolean status = False;
 
     gds = (GDeviceSetup*)data;
     model = gtk_tree_view_get_model(tv);
@@ -260,12 +254,9 @@ static void signal_dnd_recv(GtkTreeView *tv,
     
     /* try */
     if(md_id == ID_FLOATING)
-      status = float_device(gds, id);
+        float_device(gds, id);
     else
-      status = change_attachment(gds, id, md_id);
-
-    if(status)
-      toggle_undo_button(gds, TRUE); 
+        change_attachment(gds, id, md_id);
 }
 
 
@@ -726,10 +717,8 @@ int main (int argc, char *argv[])
 
     gtk_dialog_add_buttons(GTK_DIALOG(window),
                            GTK_STOCK_HELP, GTK_RESPONSE_HELP,
-                           GTK_STOCK_UNDO, GTK_RESPONSE_CANCEL,
                            GTK_STOCK_CLOSE, GTK_RESPONSE_CLOSE,
                            NULL);
-    toggle_undo_button(&gds, FALSE);
 
     /* main dialog area */
     gds.treeview = get_tree_view(&gds);
@@ -764,14 +753,6 @@ int main (int argc, char *argv[])
         switch(response)
         {
             case GTK_RESPONSE_HELP:
-                break;
-            case GTK_RESPONSE_CANCEL:
-	      g_printerr("undo !\n");
-	      /*query_devices(&gds);
-                g_list_free(gds.changes);
-                gds.changes = NULL;
-                */
-	        toggle_undo_button(&gds, FALSE);
                 break;
             case GTK_RESPONSE_CLOSE:
                 loop = FALSE;
