@@ -41,7 +41,6 @@ enum {
 typedef struct {
     Display     *dpy;       /* Display connection (in addition to GTK) */
     GdkDisplay *display;
-    GList       *changes;   /* changes to be applied when "apply" is hit */
     GtkTreeView *treeview;  /* the main view */
     GtkWidget   *window;
     gint         generation;
@@ -269,51 +268,7 @@ static void signal_dnd_recv(GtkTreeView *tv,
       toggle_undo_button(gds, TRUE); 
 }
 
-/**
- * Apply button clicked.
- * Gather all the changes in the list and apply them to the display.
- */
-static void apply(GDeviceSetup *gds)
-{
-    int num_changes = 0;
-    XIAnyHierarchyChangeInfo *all_changes;
-    GList *it;
-    int i;
 
-    /* count number of elements in list first */
-    it = gds->changes;
-    while(it)
-    {
-        num_changes++;
-        it = g_list_next(it);
-    }
-
-    if (!num_changes)
-        return;
-
-    /* push everything from list into array, free list, then apply to dpy */
-    all_changes = malloc(num_changes * sizeof(XIAnyHierarchyChangeInfo));
-    if (!all_changes)
-    {
-        g_debug("No memory.");
-        return;
-    }
-
-    for (i = 0, it = gds->changes;
-         i < num_changes && it;
-         i++, it = g_list_next(it))
-    {
-        all_changes[i] = *((XIAnyHierarchyChangeInfo*)it->data);
-        free(it->data);
-    }
-
-    XIChangeHierarchy(gds->dpy, all_changes, num_changes);
-    XFlush(gds->dpy);
-
-    g_list_free(gds->changes);
-    gds->changes = NULL;
-    query_devices(gds); /* update display */
-}
 
 /**
  * New master device button clicked.
@@ -819,28 +774,13 @@ int main (int argc, char *argv[])
 	        toggle_undo_button(&gds, FALSE);
                 break;
             case GTK_RESPONSE_CLOSE:
-                if (gds.changes)
-                {
-                    message = gtk_message_dialog_new(GTK_WINDOW(window),
-                                                     GTK_DIALOG_MODAL,
-                                                     GTK_MESSAGE_QUESTION,
-                                                     GTK_BUTTONS_YES_NO,
-                                                     "You have unapplied "
-                                                     "changes. Are you sure "
-                                                     "you want to quit?");
-                    response = gtk_dialog_run(GTK_DIALOG(message));
-                    gtk_widget_destroy(message);
-                    loop = (response == GTK_RESPONSE_NO);
-                } else
-                    loop = FALSE;
+                loop = FALSE;
                 break;
             case GTK_RESPONSE_DELETE_EVENT:
                 loop = FALSE;
                 break;
         }
     } while (loop);
-
-    g_list_free(gds.changes);
 
     XCloseDisplay(gds.dpy);
 
